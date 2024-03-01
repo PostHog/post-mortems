@@ -22,7 +22,7 @@ _To be done pre-meeting. Give a summary of what caused the incident._
 > What improvements could remove the risk of this type of failure happening again? How could you have failed gracefully or failed fast to reduce the impact of this failure?
 
 ## Follow-ups
-(copy these from incident.io pre-meeting)
+_Copy these from incident.io pre-meeting_
 
 - [ ] 
 
