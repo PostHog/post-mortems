@@ -9,7 +9,7 @@ As a result, some users had their flags fallback to empty responses, and some ha
 
 We spent way too much time trying to figure out what was wrong, which is why this incident lasted so long - this is completely unacceptable and we’ll be making several changes to make sure this doesn’t happen again.
 
-To start with, all SDKs will stop retrying feature flag requests, and have customisable timeouts specific for flags. Further, the default here will be 3 seconds, compared to the 10 second default for all other requests. This is already released for python(v3.5.0) and node(v.4.0), rest of the SDKs to follow. This should make sure that even if something unexpected goes wrong with our servers in the future, your application never goes down.
+To start with, all SDKs will stop retrying feature flag requests, and have customisable timeouts specific for flags. Further, the default here will be 3 seconds, compared to the 10 second default for all other requests. This is already released for all SDKs now. This should make sure that even if something unexpected goes wrong with our servers in the future, your application never goes down.
 
 Secondly, we’ll add a manual override to our db healthchecks, so we can much more quickly respond to issues like these, and bring flags back up.
 
