@@ -21,7 +21,7 @@ We've already completed several immediate fixes:
 
 Here's what we're implementing to prevent this from happening again:
 
-**Short term (this sprint):**
+**Short term (this sprint, feel free to follow [the GitHub issue](https://github.com/PostHog/posthog/issues/39133)):**
 
 - **Decoupling reader and writer operations** - Most flag evaluations are read-only and shouldn't fail when the writer database has issues. We're separating these paths so only flags that actually need write access are affected by writer DB problems.
 - **Fixing our rollback procedures** - We're updating our ArgoCD rollback runbook with clear, step-by-step instructions and making it easily accessible from all alerts.
