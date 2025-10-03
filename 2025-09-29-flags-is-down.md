@@ -1,6 +1,6 @@
 # PostHog Feature Flags Service Outage - September 29, 2025
 
-Internal post-mortem: https://github.com/PostHog/incidents-analysis/pull/120
+Internal post-mortem: <https://github.com/PostHog/incidents-analysis/pull/120>
 
 On September 29th, PostHog Feature Flags went down for about 1 hour and 48 minutes, from 16:58 to 18:46 UTC, affecting approximately 78% of flag evaluation requests in the US region.
 
@@ -21,14 +21,14 @@ We've already completed several immediate fixes:
 
 Here's what we're implementing to prevent this from happening again:
 
-**Short term (this week):**
+**Short term (this sprint):**
 
 - **Decoupling reader and writer operations** - Most flag evaluations are read-only and shouldn't fail when the writer database has issues. We're separating these paths so only flags that actually need write access are affected by writer DB problems.
 - **Fixing our rollback procedures** - We're updating our ArgoCD rollback runbook with clear, step-by-step instructions and making it easily accessible from all alerts.
 - **Implementing circuit breakers** - We're adding proper circuit breakers with exponential backoff to prevent retry storms from amplifying problems.
 - **Aggressive health checks** - Pods that fail will be immediately removed from traffic rotation, not after 45+ minutes.
 
-**Longer term (Q1 2025):**
+**Longer term (Q4 2025/Q1 2026):**
 
 - **Improved tooling** for identifying and terminating unhealthy pods during incidents
 - **Load testing** to understand connection behavior under various contention scenarios
