@@ -2,42 +2,66 @@
 
 Internal post-mortem: <https://github.com/PostHog/incidents-analysis/pull/120>
 
-On September 29th, PostHog Feature Flags went down for about 1 hour and 48 minutes, from 16:58 to 18:46 UTC, affecting approximately 78% of flag evaluation requests in the US region.
+On September 29, 2025, the PostHog Feature Flags service experienced an outage lasting 1 hour and 48 minutes, from 16:58 to 18:46 UTC. During this period, approximately 78% of flag evaluation requests in the US region failed with HTTP 504 errors.
 
-## What Happened
+## Summary
 
-Our writer database experienced high load from person ingestion, which caused initial connection issues. Unfortunately, we had just deployed a change that reduced our database connection timeout from 1 second to 300 milliseconds. This created a perfect storm: pods couldn't connect to the database fast enough, triggering automatic retries that amplified the problem into a full service outage.
+A database connection timeout reduction from 1 second to 300 milliseconds coincided with elevated load on our writer database from person ingestion. This combination triggered cascading failures in our connection retry logic, resulting in a service-wide outage. Recovery was significantly delayed by hardcoded configuration values and procedural failures in our incident response.
 
-The situation was made worse by our retry logic, which essentially created a self-inflicted DDoS attack. Pods that crashed continued receiving traffic for up to 45 minutes, and our standard rollback procedures failed due to configuration issues. What should have been a 5-minute fix turned into nearly 2 hours because timeout values were hardcoded and required full deployments to change.
+## Timeline
 
-As a result, most users experienced 504 errors when trying to evaluate feature flags. The ironic part? Most of these failing requests didn't even need writer database access—they failed simply because they hit pods stuck in crash loops.
+- **16:58 UTC** - Writer database begins experiencing connection saturation from person ingestion workload
+- **17:02 UTC** - Unrelated deployment reduces database connection timeout from 1s to 300ms
+- **17:05 UTC** - Initial pods begin failing database connections and entering crash loops
+- **17:12 UTC** - Retry amplification begins overwhelming the writer database
+- **17:25 UTC** - Incident declared, rollback attempted
+- **17:40 UTC** - Rollback fails due to ArgoCD configuration issues
+- **18:15 UTC** - Manual configuration changes deployed
+- **18:46 UTC** - Service fully restored
 
-## What We're Doing About It
+## Root Cause Analysis
 
-We've already completed several immediate fixes:
+The outage resulted from three compounding factors:
 
-- Made all database connection settings configurable without code changes
-- Increased timeout values to handle load appropriately
+1. **Configuration change timing**: A connection timeout reduction deployed during a period of database stress created conditions where pods could not establish connections within the new timeout window.
 
-Here's what we're implementing to prevent this from happening again:
+2. **Retry amplification**: Our retry logic lacked circuit breakers and exponential backoff, causing failed connection attempts to multiply rapidly. This transformed a manageable database load issue into complete service unavailability.
 
-**Short term (this sprint, feel free to follow [the GitHub issue](https://github.com/PostHog/posthog/issues/39133)):**
+3. **Health check configuration**: Kubernetes continued routing traffic to pods in crash loops for up to 45 minutes due to improperly configured liveness and readiness probes.
 
-- **Decoupling reader and writer operations** - Most flag evaluations are read-only and shouldn't fail when the writer database has issues. We're separating these paths so only flags that actually need write access are affected by writer DB problems.
-- **Fixing our rollback procedures** - We're updating our ArgoCD rollback runbook with clear, step-by-step instructions and making it easily accessible from all alerts.
-- **Implementing circuit breakers** - We're adding proper circuit breakers with exponential backoff to prevent retry storms from amplifying problems.
-- **Aggressive health checks** - Pods that fail will be immediately removed from traffic rotation, not after 45+ minutes.
+The incident duration was extended by operational failures: timeout values were hardcoded in the application rather than externalized as configuration, requiring a full deployment cycle to modify. Additionally, our standard ArgoCD rollback procedure failed due to misconfigured permissions.
 
-**Longer term (Q4 2025/Q1 2026):**
+## Impact
 
-- **Improved tooling** for identifying and terminating unhealthy pods during incidents
-- **Load testing** to understand connection behavior under various contention scenarios
-- **Quarterly drills** to practice emergency procedures like rollbacks
+- 78% of feature flag evaluation requests failed in the US region
+- All flag types were affected, including read-only flags that did not require writer database access
+- Customers experienced HTTP 504 errors regardless of their specific flag configurations
 
-## The Bottom Line
+## Remediation
 
-This outage was preventable and lasted far longer than it should have. The combination of hardcoded values, retry amplification, and confusion during recovery turned a minor database issue into a major service disruption.
+### Immediate Actions (Completed)
 
-We're treating this as a critical learning opportunity. The architectural improvements we're making—especially decoupling read and write operations—will fundamentally improve the resilience of our feature flags service. Combined with better operational tooling and procedures, we're confident these changes will prevent similar incidents in the future.
+- Database connection timeouts moved to runtime configuration
+- Timeout values increased to accommodate peak load scenarios
 
-We apologize for the disruption this caused. Feature flags are critical infrastructure for many of our users, and we take this responsibility seriously. The improvements we're implementing will make the service more robust and ensure that even when individual components fail, your feature flags keep working.
+### Short-term Improvements (In Progress - [GitHub Issue #39133](https://github.com/PostHog/posthog/issues/39133))
+
+- **Read/write path separation**: Implementing distinct connection pools and failure domains for read-only operations versus write operations. Read-only flag evaluations will continue functioning during writer database issues.
+
+- **Circuit breaker implementation**: Adding circuit breakers with exponential backoff to prevent retry amplification during connection failures.
+
+- **Health check optimization**: Configuring aggressive liveness and readiness probes to remove failing pods from rotation within seconds rather than minutes.
+
+- **Rollback procedure documentation**: Creating detailed runbooks for ArgoCD rollbacks with proper permission configurations and validation steps.
+
+### Long-term Improvements (Q4 2025 - Q1 2026)
+
+- Development of specialized tooling for rapid pod termination during incidents
+- Comprehensive load testing to validate connection pool behavior under contention
+- Quarterly incident response drills to ensure operational readiness
+
+## Lessons Learned
+
+This incident highlighted critical gaps in our defensive architecture and operational procedures. The coupling of read and write operations created unnecessary failure domains, while our retry logic lacked basic protective mechanisms against amplification. Most significantly, our incident response was hampered by inflexible configuration management and untested rollback procedures.
+
+The architectural improvements underway will provide proper isolation between different operational modes of the feature flags service. This separation, combined with improved circuit breaking and configuration management, will prevent similar cascading failures in the future.
