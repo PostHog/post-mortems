@@ -34,7 +34,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 - **18:15 UTC** - Manual configuration changes deployed
 - **18:46 UTC** - Service fully restored
 
-Full outage timeline
+Full service degradation timeline
 
 <img width="1909" height="460" alt="outage timeline" src="https://github.com/user-attachments/assets/a37eabe7-b91a-462b-967e-262c139f82fe" />
 
