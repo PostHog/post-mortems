@@ -18,7 +18,7 @@ A database connection timeout reduction from 1 second to 300 milliseconds coinci
 
 - **17:05 UTC** - Initial pods begin failing database connections and entering crash loops
 
-```shell
+```
 {"timestamp":"2025-09-29T16:54:16.154136Z","level":"ERROR","fields":{"message":"Failed to create database pools","error":"Database error: pool timed out while waiting for an open connection"},"target":"feature_flags::server","threadId":"ThreadId(1)"}
 thread 'main' panicked at feature-flags/src/main.rs:119:5:
 internal error: entered unreachable code: Server exited unexpectedly
