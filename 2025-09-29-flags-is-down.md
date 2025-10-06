@@ -63,7 +63,7 @@ The incident duration was extended by operational failures: timeout values were 
 - Database connection timeouts moved to runtime configuration
 - Timeout values increased to accommodate peak load scenarios
 
-### Short-term Improvements (In Progress - [GitHub Issue #39133](https://github.com/PostHog/posthog/issues/39133))
+### Short-term Improvements ([Follow along here](https://github.com/PostHog/posthog/issues/39133))
 
 - **Read/write path separation**: Implementing distinct connection pools and failure domains for read-only operations versus write operations. Read-only flag evaluations will continue functioning during writer database issues.
 
