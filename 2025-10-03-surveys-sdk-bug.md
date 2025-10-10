@@ -1,63 +1,131 @@
 # PostHog Surveys SDK Bug - October 3, 2025
 
+On October 3, 2025, a backwards compatibility issue in the PostHog Surveys SDK (version 1.270.0) caused widespread JavaScript exceptions for customers using SDK versions older than 1.257.1. The issue lasted 5 hours and 26 minutes, affecting 305 teams and disrupting both survey functionality and error tracking metrics.
+
 ## Summary
 
-A bug in the PostHog Surveys SDK caused anyone in an older SDK version (< 1.257.1) to have increased number of exceptions.
+A backwards compatibility break in SDK version 1.270.0 introduced a dependency on the `isDisabled` function from the `PostHogPersistence` class, which was only added in version 1.257.1 (July 2025). The issue manifested when the asynchronously-loaded survey extension attempted to call this function on older SDK versions where it didn't exist, causing JavaScript exceptions in customer applications. The incident was initially detected through customer support tickets rather than automated monitoring, leading to a 4+ hour detection delay and extended customer impact.
 
 ## Timeline
 
-Times in UTC.
+All times in UTC.
 
-- 10:45: we deployed the new SDK version (1.270.0) that has the issue.
-- 14:59: [a support engineer notices two similar reports in tickets](https://posthog.slack.com/archives/C075D3C5HST/p1759503579040139).
-- 15:25: Issue is confirmed by the surveys team. We start the process of reverting the potential PRs at fault [PR 1](https://github.com/PostHog/posthog/pull/39108/files) [PR 2](https://github.com/PostHog/posthog-js/pull/2397)
-- 16:00: [Error Tracking team notices the throughput of exceptions is up](https://posthog.slack.com/archives/C087FAT5FK5/p1759507228619759)
-- 16:11: PRs are now reverted, issue is no longer happening.
-- 16:25: [kick off the incident](https://posthog.slack.com/archives/C09JR5WV0JG/p1759508704952599)
-- 22:28: we resolve the incident and start the documentation phase.
+- **10:45** - SDK version 1.270.0 deployed to production with backwards compatibility issue
+- **14:59** - [Support engineer notices two similar customer reports in tickets](https://posthog.slack.com/archives/C075D3C5HST/p1759503579040139)
+- **15:25** - Issue confirmed by surveys team. Begin reverting suspected PRs: [Backend PR](https://github.com/PostHog/posthog/pull/39108/files) and [SDK PR](https://github.com/PostHog/posthog-js/pull/2397)
+- **16:00** - [Error Tracking team independently notices spike in exception throughput](https://posthog.slack.com/archives/C087FAT5FK5/p1759507228619759)
+- **16:11** - Reverts deployed, issue mitigated. SDK version 1.270.1 released
+- **16:25** - [Formal incident declared retroactively](https://posthog.slack.com/archives/C09JR5WV0JG/p1759508704952599)
+- **16:45** - Customer communications sent to affected teams
+- **22:28** - Incident closed, post-mortem phase begins
 
-Overall duration until mitigation: 5h26min.
+**Total impact duration:** 5 hours 26 minutes (10:45 - 16:11 UTC)
+**Detection delay:** 4 hours 14 minutes
 
 ## Root Cause Analysis
 
-This is [the culprit PR](https://github.com/PostHog/posthog-js/pull/2355) that introduced the issue.
+[The culprit PR](https://github.com/PostHog/posthog-js/pull/2355) introduced the backwards compatibility issue.
 
-The PR was about adding a new check in the surveys SDK to use the `posthog.persistence` instead of `localStorage` directly. However, to ensure backwards compatibility, we also needed to check if the `posthog.persistence` was available.
+### The Technical Problem
 
-For that, we used the `isDisabled` function from the `PostHogPersistence` class. And added a utility in the `survey-utils.ts` file to check if persistence was available.
+The PR modified the surveys SDK to use `posthog.persistence` instead of accessing `localStorage` directly—a reasonable architectural improvement. To ensure backwards compatibility, the code needed to check whether `posthog.persistence` was available before attempting to use it.
 
-But, that function was only added on a [PR made on July 11](https://github.com/PostHog/posthog-js/pull/2082), and only made available since the version 1.257.1 of the SDK.
+The implementation used the `isDisabled` function from the `PostHogPersistence` class, adding a utility in `survey-utils.ts` to verify persistence availability. However, this function was only introduced in [a PR merged on July 11](https://github.com/PostHog/posthog-js/pull/2082) and first made available in SDK version 1.257.1.
 
-When it was merged, both code in the surveys SDK (posthog-surveys.ts) and in the extensions (extensions/surveys.tsx) relied on this function.
+### Why It Failed
 
-It's not a problem for the code in the main SDK file (posthog-surveys.ts). However, since the extensions are downloaded async and always on the most updated version, it caused an error where the function was not available.
+When PR #2355 was merged, both the main SDK code (`posthog-surveys.ts`) and the extension code (`extensions/surveys.tsx`) relied on the `isDisabled` function.
 
-This ended up causing an increased number of exceptions for anyone using an older version older than 1.257.1.
+For the main SDK bundle, this worked correctly—customers on older versions never loaded the new code containing the reference to `isDisabled`.
 
-It wasn't caught in the code review as we don't usually check when an API is added to the main SDK files.
+However, the survey extension creates an asymmetric loading scenario:
+
+1. The customer's application loads the SDK at whatever version they have installed (potentially months or years old)
+2. The survey extension is loaded asynchronously from our CDN and **always downloads the latest version**
+
+This created a version mismatch where:
+
+- The old SDK (< 1.257.1) didn't have the `isDisabled` function
+- The new extension (1.270.0) expected it to exist
+- JavaScript threw `TypeError: isDisabled is not a function` exceptions
+
+### Why It Wasn't Caught
+
+1. **No version compatibility testing**: We lack automated tests that verify new extension code works with older SDK versions
+2. **Code review gaps**: We don't have a process to flag when new APIs are added to main SDK files that might be called by extensions
+3. **No static analysis**: No linter rules prevent extensions from calling functions that may not exist in older SDK versions
+4. **Detection gaps**: No monitoring alerted us to the spike in customer-side exceptions—we learned about it from support tickets
 
 ## Impact
 
-This issue only affected customers on older versions of the SDK (< 1.257.1). In total, 305 teams were affected.
+**Severity:** P1 (High Impact, Service Degradation)
 
-It caused both any Surveys functionality to not work properly, as well as an increased number of exceptions in our customers' applications.
+**Affected customers:** 305 teams running SDK versions < 1.257.1
 
-Regarding the Error Tracking bill, we were able to reduce this to 90 because [we found a way to exclude most of the exceptions caused by this issue](https://github.com/PostHog/posthog/pull/39126).
+**User-facing impact:**
+
+- All Survey functionality completely broken (surveys failed to load or display)
+- JavaScript exceptions thrown in customer applications, potentially affecting their own application functionality
+- Increased error tracking bill for affected customers due to exception volume
+
+**Duration:** 5 hours 26 minutes of active impact
+
+**Error tracking billing impact:**
+
+- Initially 305 teams saw increased exception volumes
+- Successfully filtered out the most common exception pattern via [this PR](https://github.com/PostHog/posthog/pull/39126), reducing billable impact to 90 teams
+- The remaining 215 teams' exceptions were successfully excluded from their bills
+- The 90 teams still affected experienced other related exception patterns that couldn't be automatically filtered
+
+**Business impact:**
+
+- Customer trust impacted due to breaking changes in what should have been a patch release
+- Support team burden increased with duplicate tickets
+- Engineering time diverted to incident response and customer communications
 
 ## Remediation
 
-We reverted the PRs and released a new version of the SDK (1.270.1) that fixes the issue by reverting the changes.
+We reverted the problematic changes and released SDK version 1.270.1, which restored compatibility with all SDK versions.
 
 ### Immediate Actions
 
-- Refund any customers that got an increased error tracking bill because of the higher number of exceptions. The refunds are already issued.
-- Start incidents earlier. We should have started the incident as soon as we have noticed the issue (around ~14:59). Not almost two hours after.
+- ✅ Reverted the backwards-incompatible changes and released version 1.270.1
+- ✅ Issued refunds to all customers affected by increased error tracking bills
+- Sent communications to all 305 affected teams explaining the issue and resolution
+
+**Action item:** Start incidents earlier. We should declare incidents as soon as we confirm an issue (around 14:59), not almost two hours after mitigation. This enables proper coordination and customer communication. Owner: @lucasheriques
 
 ### Short-term Improvements
 
-- Make it so the function `isDisabled` on the `posthog-persistence.ts` is nullable - as it's not always available. Owner: @lucasheriques
+- **API compatibility layer**: Modify the `isDisabled` function check in `posthog-persistence.ts` to be nullable and provide a safe fallback when undefined. This will prevent similar issues when extensions call potentially-unavailable functions. Owner: @lucasheriques
 
-### Long-term Improvements
+### Long-term Improvements (Target: Q4 2025 - Q1 2026)
 
-- Add tests the SDK that uses older versions of the SDK. This way, we can guarantee we'll not merge PR that breaks the SDK for older versions. Owner: @lucasheriques
-- See if there's a way (maybe a linter) to prevent adding new APIs to the main SDK files (posthog-\*.ts) that are not marked as potentially undefined. As they might cause breaking changes if used in an extension. Owner: @lucasheriques
+- **Version compatibility testing**: Add automated tests that run the latest extension code against the last N minor. Owner: @lucasheriques
+
+- **Static analysis tooling**: Implement a linter rule or TypeScript checking to flag when extension code calls SDK functions that aren't marked as "stable API" or don't have proper fallback handling. This should run in CI and block PRs. Owner: @lucasheriques
+
+- **Client-side error monitoring**: Set up monitoring and alerting for exception spikes in customer applications that use our SDK. This would have detected the issue within minutes instead of hours. Owner: @lucasheriques
+
+## Lessons Learned
+
+### What Went Well
+
+- **Quick mitigation once identified**: From confirmation (15:25) to mitigation (16:11) was only 46 minutes
+- **Cross-team collaboration**: Support, Error Tracking, and Surveys teams all contributed to identifying and resolving the issue
+- **Effective customer remediation**: Successfully filtered out most exceptions to reduce billing impact from 305 to 90 teams
+
+### What Went Poorly
+
+- **Detection delay**: 4+ hours from deployment to detection is unacceptable for an issue affecting 305 customers. We relied on customer reports rather than proactive monitoring
+- **Backwards compatibility blindspot**: Our development and review process had no safeguards against this class of bug
+- **Incident declaration timing**: We declared the incident after it was resolved, missing the opportunity for coordinated response and timely customer communication
+- **Testing gaps**: No integration tests covering the extension/SDK version compatibility scenario
+
+### Key Takeaways
+
+This incident revealed a critical architectural weakness in how our asynchronously-loaded extensions interact with versioned SDK code. The assumption that extensions can safely call any SDK function breaks down when we have customers on old SDK versions but always serve them the latest extension code.
+
+The 4+ hour detection delay highlights gaps in our observability for client-side errors. We lack visibility into exceptions occurring in customer applications using our SDK.
+
+The improvements outlined above will address both the immediate technical issue and the systemic gaps in testing, monitoring, and deployment practices that allowed this to reach production and persist for over 5 hours.
