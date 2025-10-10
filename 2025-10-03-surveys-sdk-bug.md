@@ -65,8 +65,8 @@ This created a version mismatch where:
 **User-facing impact:**
 
 - All Survey functionality completely broken (surveys failed to load or display)
-- JavaScript exceptions thrown in customer applications, potentially affecting their own application functionality
 - Increased error tracking bill for affected customers due to exception volume
+- JavaScript exceptions thrown in customer applications, potentially affecting their own application functionality and exception-tracking bills in other platforms
 
 **Duration:** 5 hours 26 minutes of active impact
 
@@ -76,12 +76,6 @@ This created a version mismatch where:
 - Successfully filtered out the most common exception pattern via [this PR](https://github.com/PostHog/posthog/pull/39126), reducing billable impact to 90 teams
 - The remaining 215 teams' exceptions were successfully excluded from their bills
 - The 90 teams still affected experienced other related exception patterns that couldn't be automatically filtered
-
-**Business impact:**
-
-- Customer trust impacted due to breaking changes in what should have been a patch release
-- Support team burden increased with duplicate tickets
-- Engineering time diverted to incident response and customer communications
 
 ## Remediation
 
