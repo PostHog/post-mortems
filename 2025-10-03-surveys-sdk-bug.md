@@ -58,7 +58,7 @@ This created a version mismatch where:
 
 ## Impact
 
-**Severity:** P1 (High Impact, Service Degradation)
+**Severity:** Major (High Impact, Service Degradation)
 
 **Affected customers:** 305 teams running SDK versions < 1.257.1
 
