@@ -93,6 +93,10 @@ We reverted the problematic changes and released SDK version 1.270.1, which rest
 
 - **API compatibility layer**: Modify the `isDisabled` function check in `posthog-persistence.ts` to be nullable and provide a safe fallback when undefined. This will prevent similar issues when extensions call potentially-unavailable functions. Owner: @lucasheriques
 
+- **Ignore PostHog SDK exceptions:** By default we should not capture exceptions known to be caused by the PostHog SDK. Offering a config option to toggle this parameter would allow teams (especially our own) to configure this setting. [[PR](https://github.com/PostHog/posthog-js/pull/2430)]
+
+- **Monitor suspicious exceptions:** The error tracking team should monitor the number of exceptions that look likely to be coming from our own SDK. Adding alerting to this metric would allow us to detect anomalies sooner. [[PR](https://github.com/PostHog/posthog/pull/39377)]
+
 ### Long-term Improvements (Target: Q4 2025 - Q1 2026)
 
 - **Version compatibility testing**: Add automated tests that run the latest extension code against the last N minor. Owner: @lucasheriques
