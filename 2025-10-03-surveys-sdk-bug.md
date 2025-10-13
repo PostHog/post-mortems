@@ -84,7 +84,7 @@ We reverted the problematic changes and released SDK version 1.270.1, which rest
 ### Immediate Actions
 
 - ✅ Reverted the backwards-incompatible changes and released version 1.270.1
-- ✅ Issued refunds to all customers affected by increased error tracking bills
+- ✅ Issued credits / refunds to all customers affected by increased error tracking bills
 - Sent communications to all 305 affected teams explaining the issue and resolution
 
 **Action item:** Start incidents earlier. We should declare incidents as soon as we confirm an issue (around 14:59), not almost two hours after mitigation. This enables proper coordination and customer communication. Owner: @lucasheriques
