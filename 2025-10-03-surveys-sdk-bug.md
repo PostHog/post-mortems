@@ -124,6 +124,8 @@ We reverted the problematic changes and released SDK version 1.270.1, which rest
 
 This incident revealed a critical architectural weakness in how our asynchronously-loaded extensions interact with versioned SDK code. The assumption that extensions can safely call any SDK function breaks down when we have customers on old SDK versions but always serve them the latest extension code.
 
+[We also had this similar issue in another incident here](https://github.com/PostHog/product-internal/pull/815/files).
+
 The 4+ hour detection delay highlights gaps in our observability for client-side errors. We lack visibility into exceptions occurring in customer applications using our SDK.
 
 The improvements outlined above will address both the immediate technical issue and the systemic gaps in testing, monitoring, and deployment practices that allowed this to reach production and persist for over 5 hours.
