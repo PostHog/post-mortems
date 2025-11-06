@@ -228,20 +228,31 @@ While each incident had specific triggers, three of the four incidents shared th
 ### What Went Well
 
 ✅ **Rapid detection** – Monitoring caught issues within 2 minutes in most cases
+
 ✅ **Quick initial response** – Rollbacks executed immediately when possible
+
 ✅ **Systematic investigation** – Teams methodically identified overload patterns
+
 ✅ **Cross-team collaboration** – Flags, infrastructure, and ingestion teams worked together effectively
 
 ### What Didn't Go Well
 
 ❌ **Symptom-focused fixes** – Multiple PRs addressed symptoms rather than root causes
+
 ❌ **Unbounded operations** – No limits on retries, cache population, or connection creation
+
 ❌ **Rollback insufficiency** – Data transfers and resource exhaustion persisted after code reverted
+
 ❌ **Complex failure modes** – Interactions between database, cache, and application layers not well understood
+
 ❌ **Shared infrastructure** – Flags service overloads impacted main application
+
 ❌ **Customer comms** – While we generally did a good job of making public-facing status pages during each one of these incidents, one notable gap was that we never made an externally-facing status page update for the rate-limiting incident on October 24th.
+
 ❌ **Diagnosis delays** – Took significant time to connect symptoms to root causes
+
 ❌ **Configuration rigidity** – Hardcoded values prevented rapid remediation
+
 ❌ **Missing CPU alerting** – CPU alerting was completely absent, allowing CPU pressure to escalate undetected for hours
 
 ### Key Takeaways
