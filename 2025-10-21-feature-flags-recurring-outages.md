@@ -4,7 +4,7 @@ Between October 21 and October 30, 2025, the PostHog Feature Flags service exper
 
 ## Summary
 
-Over a 10-day period in October 2025, the feature flags service experienced four separate outages totaling over 14 hours of cumulative downtime. While each incident had different surface-level symptoms, three of the four incidents shared the same root cause: improper CPU resource sizing for the nodes running the service. This undersizing led to CPU pressure that manifested as connection pool exhaustion, excessive parallelism, and ultimately cascading failures. The fourth incident was a rate limiting misconfiguration unrelated to resource sizing.
+Over a 10-day period in October 2025, the feature flags service experienced four separate outages totaling over 14 hours of cumulative downtime. While each incident had different surface-level symptoms, three of the four incidents shared the same root cause: improper CPU resource sizing for the nodes running the service. This undersizing led to CPU pressure that manifested as connection pool exhaustion, "excessive parallelism" (too many concurrent redis reads, triggered by retry logic between the load balancer and the service), and ultimately cascading failures. The fourth incident was a rate limiting misconfiguration unrelated to resource sizing.
 
 **Incidents:**
 
@@ -17,7 +17,7 @@ Over a 10-day period in October 2025, the feature flags service experienced four
 
 ### October 21, 2025 - Redis Overload
 
-**Duration:** 21:45 to 23:28 UTC (103 minutes)  
+**Duration:** 21:45 to 23:28 UTC (103 minutes)
 **Impact:** ~38% of evaluation requests returning errors in US datacenter
 
 A deployment intended to reduce timeout errors (PR [#39821](https://github.com/PostHog/posthog/pull/39821)) incorrectly addressed symptoms rather than root causes. While rolled back within 2 minutes, it triggered excessive parallelism and connection pool exhaustion, which manifested as massive data transfer from Postgres to Redis and a surge in concurrent connections that overwhelmed our cache layer. Redis memory exhaustion followed, leading to prolonged service degradation.
@@ -46,12 +46,13 @@ A deployment intended to reduce timeout errors (PR [#39821](https://github.com/P
 - **22:35 UTC** - Postgres connection spike observed, overwhelming connection pool
 - **22:45 UTC** - Discovery: Massive data transfer from Postgres to Redis in progress
 - **22:50 UTC** - Root cause identified: Excessive parallelism triggering cache population overload
+- **22:50 UTC** - Status page updated with incident details
 - **23:00 UTC** - Begin throttling connections and Redis writes
 - **23:28 UTC** - Service fully recovered
 
 ### October 24, 2025 - Rate Limiting Misconfiguration
 
-**Duration:** 18:00 to 19:12 UTC (72 minutes)  
+**Duration:** 18:00 to 19:12 UTC (72 minutes)
 **Impact:** ~97% of evaluation requests returning 429 (rate limit) errors worldwide
 
 Deployed IP-based rate limiting (PR [#40074](https://github.com/PostHog/posthog/pull/40074)) as a protective measure following Tuesday's incident. The tower-governor library saw all traffic as coming from a single IP (our load balancer) rather than actual client IPs, immediately triggering rate limits for all legitimate traffic.
@@ -75,13 +76,14 @@ Deployed IP-based rate limiting (PR [#40074](https://github.com/PostHog/posthog/
 - **19:02 UTC** - Root cause identified: rate limiter sees load balancer IP only
 - **19:05 UTC** - Decision to disable rate limiting immediately
 - **19:12 UTC** - Rate limiting disabled, service fully recovered
+- **Note:** Status page was not updated during this incident due to the rapid resolution timeline post-detection (detection to resolution in ~12 minutes)
 
 ### October 28, 2025 - Connection Pool Exhaustion and Excessive Parallelism
 
-**Duration:** 19:28 to 21:31 UTC (123 minutes)  
+**Duration:** 19:28 to 21:31 UTC (123 minutes)
 **Impact:** ~34% of evaluation requests failing in US datacenter
 
-A routine deployment with no code changes triggered a rollout of feature flag pods in the US region. New pods couldn't connect to Postgres within the 20-second startup timeout, entering crash loops due to excessive parallelism and connection pool exhaustion—the same root cause as October 21. Simultaneously, a massive spike in Redis writes caused key evictions, effectively making the cache unavailable. While the flags service can operate without Redis (falling back to heavier database queries), with both cache unavailable and database under pressure, a significant portion of US traffic failed.
+A routine deployment with no changes directly related to the flags service triggered a rollout of feature flag pods in the US region. New pods couldn't connect to Postgres within the 20-second startup timeout, entering crash loops due to excessive parallelism and connection pool exhaustion—the same root cause as October 21. Simultaneously, a massive spike in Redis writes caused key evictions, effectively making the cache unavailable. While the flags service can operate without Redis (falling back to heavier database queries), with both cache unavailable and database under pressure, a significant portion of US traffic failed.
 
 **Critical issue:** The Redis overload from the flags service also impacted the main PostHog application, highlighting dangerous infrastructure coupling. Unrelated deployments shouldn't trigger feature flags rollouts.
 
@@ -104,6 +106,7 @@ A routine deployment with no code changes triggered a rollout of feature flag po
 - **19:18 UTC** - Pods enter crash loops, reducing available capacity in US
 - **19:20 UTC** - Massive spike in Redis writes begins in US region
 - **19:23 UTC** - On-call receives high error count alert, initiates incident
+- **19:23 UTC** - Status page updated with incident details
 - **19:25 UTC** - Redis key evictions spike, cache becomes effectively unavailable
 - **19:26 UTC** - Main PostHog app begins experiencing issues due to shared Redis overload
 - **19:28 UTC** - Service degradation begins, ~34% of US requests failing
@@ -119,7 +122,7 @@ A routine deployment with no code changes triggered a rollout of feature flag po
 
 ### October 30, 2025 - CPU-Bound Latency
 
-**Duration:** 22:30 UTC on October 29 to 05:39 UTC on October 30 (7 hours 9 minutes)  
+**Duration:** 22:30 UTC on October 29 to 05:39 UTC on October 30 (7 hours 9 minutes)
 **Impact:** Slow queries and degraded performance due to node CPU pressure
 
 Query performance was impacted for over 7 hours. While queries were slow to both Redis and Postgres, metrics for both dependencies confirmed they were healthy. The slow queries were due to CPU pressure on the nodes, which exceeded 90%. This impacted connections and slowed response times for the service to several times the usual.
@@ -134,6 +137,7 @@ Query performance was impacted for over 7 hours. While queries were slow to both
 **Timeline:**
 
 - **22:30 UTC (Oct 29)** - Incident reported, increased error rates and latency detected
+- **22:30 UTC (Oct 29)** - Status page updated with incident details
 - **00:03 UTC (Oct 30)** - Rolled back hardware changes, errors mostly subsided but latencies persist
 - **05:39 UTC** - Incident resolved, query timings returned to normal
 
@@ -144,6 +148,7 @@ Query performance was impacted for over 7 hours. While queries were slow to both
 While each incident had specific triggers, three of the four incidents shared the same fundamental root cause:
 
 1. **CPU resource undersizing (primary root cause)**: The nodes running the feature flags service were not properly sized for the workload, leading to CPU pressure exceeding 90%. This CPU pressure was the root cause of October 21, 28, and 30 incidents:
+
    - **October 21 & 28**: CPU pressure caused excessive parallelism and connection pool exhaustion, which manifested as Redis overload and database connection failures
    - **October 30**: CPU pressure directly caused slow queries and degraded performance, even though Redis and Postgres metrics showed healthy dependencies
    - Proper CPU right-sizing resolved the underlying issues in all three incidents
@@ -223,20 +228,20 @@ While each incident had specific triggers, three of the four incidents shared th
 
 ### What Went Well
 
-✅ **Rapid detection** – Monitoring caught issues within 2 minutes in most cases  
-✅ **Quick initial response** – Rollbacks executed immediately when possible  
-✅ **Systematic investigation** – Teams methodically identified overload patterns  
-✅ **Clear communication** – Customer updates throughout incidents  
+✅ **Rapid detection** – Monitoring caught issues within 2 minutes in most cases
+✅ **Quick initial response** – Rollbacks executed immediately when possible
+✅ **Systematic investigation** – Teams methodically identified overload patterns
 ✅ **Cross-team collaboration** – Flags, infrastructure, and ingestion teams worked together effectively
 
 ### What Didn't Go Well
 
-❌ **Symptom-focused fixes** – Multiple PRs addressed symptoms rather than root causes  
-❌ **Unbounded operations** – No limits on retries, cache population, or connection creation  
-❌ **Rollback insufficiency** – Data transfers and resource exhaustion persisted after code reverted  
-❌ **Complex failure modes** – Interactions between database, cache, and application layers not well understood  
-❌ **Shared infrastructure** – Flags service overloads impacted main application  
-❌ **Diagnosis delays** – Took significant time to connect symptoms to root causes  
+❌ **Symptom-focused fixes** – Multiple PRs addressed symptoms rather than root causes
+❌ **Unbounded operations** – No limits on retries, cache population, or connection creation
+❌ **Rollback insufficiency** – Data transfers and resource exhaustion persisted after code reverted
+❌ **Complex failure modes** – Interactions between database, cache, and application layers not well understood
+❌ **Shared infrastructure** – Flags service overloads impacted main application
+❌ **Customer comms** – While we generally did a good job of making public-facing status pages during each one of these incidents, one notable gap was that we never made an externally-facing status page update for the rate-limiting incident on October 24th.
+❌ **Diagnosis delays** – Took significant time to connect symptoms to root causes
 ❌ **Configuration rigidity** – Hardcoded values prevented rapid remediation
 ❌ **Missing CPU alerting** – CPU alerting was completely absent, allowing CPU pressure to escalate undetected for hours
 
