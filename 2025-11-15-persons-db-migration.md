@@ -61,7 +61,7 @@ From [postgresql wiki](https://wiki.postgresql.org/wiki/TOAST):
 
 When the space of used OIDs approaches the limit, there will be longer and longer sequential runs of used OIDs. This results in the database engine having to do an incredible amount of reads (checking every used OID it is given by the counter to see if it's free or not) to make a single INSERT or UPDATE for a TOAST'ed row. 
 
-It is important to note that before the table hits the hard limit of 4 billion OIDs, write performance for TOAST'ed rows will be severely degraded, because the space of available OIDs is so sparse. If there is just a single free OID left, the database engine would, on average, have to read through 1 billion used OIDs and check to see if they are free, before it finds the free OID to complete the write. This OID exhaustion increased the amount of disk reads we were doing per write query from 10kb to 15MB, increasing latency for those queries by 100x and grinding the ingestion of events to a halt.
+It is important to note that before the table hits the hard limit of 4 billion OIDs, write performance for TOAST'ed rows will be severely degraded, because the space of available OIDs is so sparse. If there is just a single free OID left, the database engine would, on average, have to read through billions of used OIDs and check to see if they are free, before it finds the free OID to complete the write. This OID exhaustion increased the amount of disk reads we were doing per write query from 10kb to 15MB, increasing latency for those queries by 100x and grinding the ingestion of events to a halt.
 
 ### Secondary issue: AWS MSK disk pressure during catch-up
 
