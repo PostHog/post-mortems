@@ -205,7 +205,7 @@ While secondary to the main cause, disk pressure on MSK during catch-up highligh
 ❌ **Lack of communication redundancies**
 All of the team members who are normally responsible for customer communications were unavailable for the duration of this incident and we had to scramble to identify fallbacks. 
 
-### Moving Forward
+### Moving forward
 
 This incident surfaced a rare but serious interaction between our data model and a low-level PostgreSQL engine limit. It also highlighted how central the Persons data model is to the rest of PostHog: when the persons table slowed down, a wide range of features---from analytics and feature flags to replay filtering and CDP---were indirectly impacted.
 
