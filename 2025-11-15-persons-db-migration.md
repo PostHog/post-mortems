@@ -8,11 +8,11 @@ This post-mortem document examines the root cause of the issue, steps taken, and
 Incident Summary
 ----------------
 
-From November 11, 4:02 PM UTC to November 14, 3:02 PM UTC the performance of Posthog's ingestion processing pipeline became severely degraded, resulting in processing delays of events of up to 2 days for all customers in the US region. 
+From November 11, 4:02 PM UTC to November 14, 3:02 PM UTC the performance of PostHog's ingestion processing pipeline became severely degraded, resulting in processing delays of events of up to 2 days for all customers in the US region. 
 
-The root cause of the performance degradation was that our Postgres database responsible for storing our Person information reached a previously unseen limits in postgres related to the JSONb field we use to store person properties. This led to a state where writes to the database kept waiting for OIDs in the TOAST table to become available, which could take multiple seconds per update, slowing down the ingestion pipeline to the point where there were no standard scaling options available. See Root Cause Analysis below for more technical details.
+The root cause of the performance degradation was that our Postgres database responsible for storing our Person information reached a previously unseen limits in Postgres related to the JSONb field we use to store person properties. This led to a state where writes to the database kept waiting for OIDs in the TOAST table to become available, which could take multiple seconds per update, slowing down the ingestion pipeline to the point where there were no standard scaling options available. See Root Cause Analysis below for more technical details.
 
-The root cause was not identified until November 12th 10:17pm UTC, a day and a half after the issue arose. We enlisted help from  engineers on the AWS RDS team and external consultants to identify the cause and were left with only one option: migrate to a new partitioned table.
+The root cause was not identified until November 12th 10:17pm UTC, a day and a half after the issue arose. We enlisted help from engineers on the AWS RDS team and external consultants to identify the cause. Diagnosis proved difficult even with specialist support, but we eventually found out we were left with only one option: migrate to a new partitioned table.
 
 By November 14, 2025, 15:02 UTC, ingestion was healthy again and we shifted focus to the accumulated backlog. During this recovery phase, we hit a secondary issue with AWS MSK (Kafka): local disk usage reached 85% because tiered storage keeps the most recent 4 hours of data on disk before offloading to S3. The backlog catchup created an unusually dense last-4-hours window, driving up local disk usage. We temporarily paused ingestion, reduced the topic's local retention window, confirmed disk headroom, and then resumed ingestion.
 
@@ -205,7 +205,7 @@ While secondary to the main cause, disk pressure on MSK during catch-up highligh
 ❌ **Lack of communication redundancies**
 All of the team members who are normally responsible for customer communications were unavailable for the duration of this incident and we had to scramble to identify fallbacks. 
 
-### Moving Forward
+### Moving forward
 
 This incident surfaced a rare but serious interaction between our data model and a low-level PostgreSQL engine limit. It also highlighted how central the Persons data model is to the rest of PostHog: when the persons table slowed down, a wide range of features---from analytics and feature flags to replay filtering and CDP---were indirectly impacted.
 
