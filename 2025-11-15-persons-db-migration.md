@@ -8,9 +8,9 @@ This post-mortem document examines the root cause of the issue, steps taken, and
 Incident Summary
 ----------------
 
-From November 11, 4:02 PM UTC to November 14, 3:02 PM UTC the performance of Posthog's ingestion processing pipeline became severely degraded, resulting in processing delays of events of up to 2 days for all customers in the US region. 
+From November 11, 4:02 PM UTC to November 14, 3:02 PM UTC the performance of PostHog's ingestion processing pipeline became severely degraded, resulting in processing delays of events of up to 2 days for all customers in the US region. 
 
-The root cause of the performance degradation was that our Postgres database responsible for storing our Person information reached a previously unseen limits in postgres related to the JSONb field we use to store person properties. This led to a state where writes to the database kept waiting for OIDs in the TOAST table to become available, which could take multiple seconds per update, slowing down the ingestion pipeline to the point where there were no standard scaling options available. See Root Cause Analysis below for more technical details.
+The root cause of the performance degradation was that our Postgres database responsible for storing our Person information reached a previously unseen limits in Postgres related to the JSONb field we use to store person properties. This led to a state where writes to the database kept waiting for OIDs in the TOAST table to become available, which could take multiple seconds per update, slowing down the ingestion pipeline to the point where there were no standard scaling options available. See Root Cause Analysis below for more technical details.
 
 The root cause was not identified until November 12th 10:17pm UTC, a day and a half after the issue arose. We enlisted help from  engineers on the AWS RDS team and external consultants to identify the cause and were left with only one option: migrate to a new partitioned table.
 
