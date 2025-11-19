@@ -77,11 +77,11 @@ To mitigate this we paused ingestion, reduced the local retention configuration 
 
 #### Stage 1: Healthy Database State
 
-OID Space ( each █ = used OID, each ░ = free OID) [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0-1M OIDs [░░░░░██░░░░░░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░░░░] 1M-2M OIDs [░░░░░░░░██░░░░░░░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░] 2M-3M OIDs [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 3M-4M OIDs ↑ Next OID Counter (finds free OID immediately)
+OID Space ( each █ = used OID, each ░ = free OID) [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0-1B OIDs [░░░░░██░░░░░░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░░░░] 1B-2B OIDs [░░░░░░░░██░░░░░░░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░] 2B-3B OIDs [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 3B-4B OIDs ↑ Next OID Counter (finds free OID immediately)
 
 #### Stage 2: OID exhaustion
 
-OID Space (each █ = used OID, each ░ = free OID) [███████████████░░█████████░░██████████████░░██████] 0-1M OIDs [████████████████████████░░░░██████████████████░░██] 1M-2M OIDs [██████████░░███████████████████████░░█████████████] 2M-3M OIDs [████████████████████░░░░███████████████████████░░█] 3M-4M OIDs ↑ Next OID Counter (must skip over many used OIDs, each skip requiring disk reads)
+OID Space (each █ = used OID, each ░ = free OID) [███████████████░░█████████░░██████████████░░██████] 0-1B OIDs [████████████████████████░░░░██████████████████░░██] 1B-2B OIDs [██████████░░███████████████████████░░█████████████] 2B-3B OIDs [████████████████████░░░░███████████████████████░░█] 3B-4B OIDs ↑ Next OID Counter (must skip over many used OIDs, each skip requiring disk reads)
 
 Why was this hard to detect?
 ----------------------------
