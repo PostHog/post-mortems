@@ -82,9 +82,13 @@ The original `TypeError` issue remains.
 
 We are committed to:
 
-- Adding comprehensive integration tests for fetch wrapper with FormData, ReadableStream, and chained wrappers
+- ✅ Adding comprehensive integration tests for fetch wrapper with FormData, ReadableStream, and chained wrappers
+    - https://github.com/PostHog/posthog-js/pull/2935
+    - https://github.com/PostHog/posthog-js/pull/2936
 - Establishing a more robust testing strategy for the PostHog SDK - we should test lazy loaded extensions with _all_ past versions of the core SDK or implement a way to pin a version of the extensions
 - Implementing monitoring and alerting for SDK errors - consider tracking SDK exception rates, failed network requests, or other client-side signals in PostHog itself to detect issues proactively rather than relying on customer reports
 - Documenting and communicating SDK release process changes to the team
 - Adding an automated verification step to confirm releases are successfully deployed to the CDN
 - Implementing an automated notification polling on-call engineers to manually approve new SDK releases
+- Implement an easier mechanism for customers to opt in to lazy loading without opting in to auto-updating
+
