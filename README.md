@@ -1,3 +1,5 @@
+> 🚧 ARCHIVED - Post-mortems now live on [posthog.com](https://posthog.com/handbook/company/post-mortems) with guidance around them [here](https://posthog.com/handbook/company/post-mortems)
+
 # PostHog Post-mortems (Public)
 When something goes wrong, we talk about it here and come up with a plan. Unless it's confidential or involves explicitly talking about customer data - in which case it should go in [our internal repo](https://github.com/PostHog/incidents-analysis).
 
